@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { isDenied, requireApiRole } from "@/lib/auth";
+import { rejectIfEphemeral } from "@/lib/persistence";
 import { allowRequest, clientIp } from "@/lib/rate-limit";
 import { createCase, listCases } from "@/lib/store";
 import { parseOrganSystem } from "@/lib/systems";
@@ -15,6 +16,8 @@ export async function GET() {
 export async function POST(request: Request) {
   const auth = await requireApiRole(request, "user");
   if (isDenied(auth)) return auth;
+  const ephemeral = rejectIfEphemeral();
+  if (ephemeral) return ephemeral;
   if (!allowRequest(`create:${clientIp(request)}`, 8, 15 * 60 * 1000)) {
     return NextResponse.json(
       { error: "Слишком много новых случаев. Подождите немного." },

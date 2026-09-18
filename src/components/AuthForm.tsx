@@ -6,9 +6,10 @@ import { useRouter } from "next/navigation";
 
 type AuthFormProps = {
   configured: boolean;
+  storageWarning?: string | null;
 };
 
-export function AuthForm({ configured }: AuthFormProps) {
+export function AuthForm({ configured, storageWarning }: AuthFormProps) {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -16,10 +17,11 @@ export function AuthForm({ configured }: AuthFormProps) {
   const [website, setWebsite] = useState("");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+  const wipeBlocked = Boolean(storageWarning) && !configured;
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    if (pending) return;
+    if (pending || wipeBlocked) return;
     setError("");
     if (!configured && password !== confirm) {
       setError("Пароли не совпадают");
@@ -53,14 +55,22 @@ export function AuthForm({ configured }: AuthFormProps) {
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-4 py-10">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">RgPattern</p>
       <h1 className="mt-2 text-2xl font-semibold">
-        {configured ? "Вход" : "Создание суперадмина"}
+        {configured ? "Вход" : wipeBlocked ? "Логины тоже удалились" : "Создание суперадмина"}
       </h1>
       <p className="mt-2 text-sm leading-6 text-muted">
         {configured
           ? "Смотреть снимки можно без входа. Добавлять, изменять и скачивать — только после авторизации."
-          : "Первый пользователь станет суперадмином: сможет удалять случаи и регистрировать коллег."}
+          : wipeBlocked
+            ? "Старые логин и пароль не подойдут: суперадмин и пользователи хранились в том же каталоге, что и снимки, и исчезли вместе с архивом. Сначала подключите Volume — и только потом создавайте суперадмина заново."
+            : "Первый пользователь станет суперадмином: сможет удалять случаи и регистрировать коллег."}
       </p>
+      {storageWarning ? (
+        <p className="mt-4 rounded-xl bg-danger-soft px-3 py-2 text-sm leading-6 text-danger">
+          {storageWarning}
+        </p>
+      ) : null}
 
+      {wipeBlocked ? null : (
       <form onSubmit={(event) => void onSubmit(event)} className="mt-6 space-y-4 rounded-2xl border border-line bg-surface p-5">
         <label className="block">
           <span className="text-sm font-semibold">Логин</span>
@@ -117,6 +127,7 @@ export function AuthForm({ configured }: AuthFormProps) {
           {pending ? "Проверка…" : configured ? "Войти" : "Создать суперадмина"}
         </button>
       </form>
+      )}
       <Link href="/" className="mt-5 text-center text-sm text-muted hover:text-ink">
         К архиву без входа
       </Link>

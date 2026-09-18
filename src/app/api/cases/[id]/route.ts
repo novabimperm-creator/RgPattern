@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { isDenied, requireApiRole } from "@/lib/auth";
+import { rejectIfEphemeral } from "@/lib/persistence";
 import { deleteCase, getCase, updateCase } from "@/lib/store";
 import { parseOrganSystem } from "@/lib/systems";
 
@@ -20,6 +21,8 @@ export async function GET(_request: Request, context: RouteContext) {
 export async function PATCH(request: Request, context: RouteContext) {
   const auth = await requireApiRole(request, "user");
   if (isDenied(auth)) return auth;
+  const ephemeral = rejectIfEphemeral();
+  if (ephemeral) return ephemeral;
   const { id } = await context.params;
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   if (body.system !== undefined && !parseOrganSystem(body.system)) {
@@ -45,6 +48,8 @@ export async function PATCH(request: Request, context: RouteContext) {
 export async function DELETE(request: Request, context: RouteContext) {
   const auth = await requireApiRole(request, "superadmin");
   if (isDenied(auth)) return auth;
+  const ephemeral = rejectIfEphemeral();
+  if (ephemeral) return ephemeral;
   const { id } = await context.params;
   const ok = await deleteCase(id);
   if (!ok) {
