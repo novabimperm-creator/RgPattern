@@ -22,8 +22,8 @@ type AuthFile = {
 };
 
 type LegacyAuthFile = {
-  passwordHash: string;
-  sessionSecret: string;
+  passwordHash?: string;
+  sessionSecret?: string;
   users?: StoredUser[];
 };
 
@@ -69,8 +69,10 @@ function publicUser(user: StoredUser): PublicUser {
   return { id: user.id, username: user.username, role: user.role };
 }
 
-function isAuthFile(value: LegacyAuthFile): value is AuthFile {
-  return Array.isArray(value.users) && typeof value.sessionSecret === "string";
+function asAuthFile(value: LegacyAuthFile | null): AuthFile | null {
+  if (!value || !Array.isArray(value.users) || value.users.length === 0) return null;
+  if (typeof value.sessionSecret !== "string" || !value.sessionSecret) return null;
+  return { users: value.users, sessionSecret: value.sessionSecret };
 }
 
 async function readRaw(): Promise<LegacyAuthFile | null> {
@@ -91,20 +93,22 @@ async function writeAuth(file: AuthFile) {
 
 async function readAuth(): Promise<AuthFile | null> {
   const parsed = await readRaw();
-  if (!parsed) return null;
-  if (isAuthFile(parsed) && parsed.users.length > 0) return parsed;
-  if (parsed.passwordHash && parsed.sessionSecret) {
+  const current = asAuthFile(parsed);
+  if (current) return current;
+  if (parsed?.passwordHash && parsed.sessionSecret) {
+    const legacyHash = parsed.passwordHash;
+    const legacySecret = parsed.sessionSecret;
     return enqueue(async () => {
-      const again = await readRaw();
-      if (again && isAuthFile(again) && again.users.length > 0) return again;
+      const existing = asAuthFile(await readRaw());
+      if (existing) return existing;
       const migrated: AuthFile = {
-        sessionSecret: parsed.sessionSecret,
+        sessionSecret: legacySecret,
         users: [
           {
             id: crypto.randomUUID(),
             username: "admin",
             role: "superadmin",
-            passwordHash: parsed.passwordHash,
+            passwordHash: legacyHash,
             createdAt: new Date().toISOString(),
           },
         ],
