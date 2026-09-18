@@ -44,7 +44,7 @@ export function Lightbox({ files, index, onClose, onIndexChange }: LightboxProps
 
   return (
     <div
-      className="fixed inset-0 z-50 flex flex-col bg-film/95"
+      className="fixed inset-0 z-50 flex flex-col bg-black"
       role="dialog"
       aria-modal="true"
       aria-label="Просмотр снимка"
@@ -120,7 +120,7 @@ export function Lightbox({ files, index, onClose, onIndexChange }: LightboxProps
         <img
           src={fileUrl(current.id)}
           alt={current.originalName}
-          className="max-h-full max-w-full object-contain select-none"
+          className="h-[min(80dvh,920px)] w-auto max-w-[min(100%,1200px)] object-contain select-none"
           onClick={(event) => event.stopPropagation()}
         />
       </div>

@@ -54,7 +54,8 @@ export function CaseList({ initialCases }: { initialCases: MedicalCase[] }) {
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Поиск по диагнозу, описанию, комментариям"
+              placeholder="Поиск по случаям"
+              aria-label="Поиск по диагнозу, описанию и комментариям"
               className="min-h-11 w-full rounded-xl border border-line bg-surface py-2 pl-10 pr-3 text-sm outline-none ring-accent/30 focus:border-accent focus:ring-4"
             />
           </div>
