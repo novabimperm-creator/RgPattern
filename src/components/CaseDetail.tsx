@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CaseFile, MedicalCase, PublicUser } from "@/lib/types";
 import { permissionsFor } from "@/lib/types";
@@ -51,20 +51,14 @@ export function CaseDetail({ initialCase, viewer }: CaseDetailProps) {
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmLeave, setConfirmLeave] = useState(false);
-  const formRef = useRef(form);
-  const saveStateRef = useRef(saveState);
   const caseId = initialCase.id;
   const { canEdit, canDelete } = permissionsFor(viewer);
   const dirty = canEdit && !formsEqual(form, savedForm);
   const saving = saveState === "saving";
 
-  formRef.current = form;
-  saveStateRef.current = saveState;
-
   const persist = useCallback(async () => {
-    if (!canEdit || saveStateRef.current === "saving") return false;
-    const snapshot = formRef.current;
-    if (!isOrganSystemId(snapshot.system)) {
+    if (!canEdit || saving) return false;
+    if (!isOrganSystemId(form.system)) {
       setSaveState("error");
       return false;
     }
@@ -73,7 +67,7 @@ export function CaseDetail({ initialCase, viewer }: CaseDetailProps) {
       const response = await fetch(`/api/cases/${caseId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(snapshot),
+        body: JSON.stringify(form),
       });
       if (!response.ok) throw new Error("save failed");
       const payload = (await response.json()) as MedicalCase;
@@ -85,14 +79,14 @@ export function CaseDetail({ initialCase, viewer }: CaseDetailProps) {
         comments: payload.comments,
         updatedAt: payload.updatedAt,
       }));
-      setSavedForm(snapshot);
+      setSavedForm(form);
       setSaveState("saved");
       return true;
     } catch {
       setSaveState("error");
       return false;
     }
-  }, [canEdit, caseId]);
+  }, [canEdit, caseId, form, saving]);
 
   function patchForm(patch: Partial<CaseForm>) {
     if (!canEdit) return;
@@ -132,13 +126,11 @@ export function CaseDetail({ initialCase, viewer }: CaseDetailProps) {
     const onKey = (event: KeyboardEvent) => {
       if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== "s") return;
       event.preventDefault();
-      if (!formsEqual(formRef.current, savedForm) && saveStateRef.current !== "saving") {
-        void persist();
-      }
+      if (dirty && !saving) void persist();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [canEdit, persist, savedForm]);
+  }, [canEdit, dirty, persist, saving]);
 
   async function removeCase() {
     const response = await fetch(`/api/cases/${caseId}`, { method: "DELETE" });
