@@ -1,5 +1,6 @@
 import { promises as fs } from "fs";
 import { NextResponse } from "next/server";
+import { requireApiSession } from "@/lib/auth";
 import { contentDisposition } from "@/lib/files";
 import { deleteFile, filePath, getFileRecord } from "@/lib/store";
 
@@ -9,6 +10,8 @@ export const runtime = "nodejs";
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(request: Request, context: RouteContext) {
+  const denied = await requireApiSession(request);
+  if (denied) return denied;
   const { id } = await context.params;
   const record = await getFileRecord(id);
   if (!record) {
@@ -36,7 +39,9 @@ export async function GET(request: Request, context: RouteContext) {
   }
 }
 
-export async function DELETE(_request: Request, context: RouteContext) {
+export async function DELETE(request: Request, context: RouteContext) {
+  const denied = await requireApiSession(request);
+  if (denied) return denied;
   const { id } = await context.params;
   const updated = await deleteFile(id);
   if (!updated) {

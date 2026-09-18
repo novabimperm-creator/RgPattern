@@ -30,6 +30,10 @@ export function CaseList({ initialCases }: { initialCases: MedicalCase[] }) {
     setError("");
     try {
       const response = await fetch("/api/cases", { method: "POST" });
+      if (response.status === 401) {
+        router.push("/login");
+        return;
+      }
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Не удалось создать случай");
       router.push(`/cases/${payload.id}`);
@@ -38,6 +42,16 @@ export function CaseList({ initialCases }: { initialCases: MedicalCase[] }) {
       setError(err instanceof Error ? err.message : "Не удалось создать случай");
       setCreating(false);
     }
+  }
+
+  async function logout() {
+    await fetch("/api/auth", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "logout" }),
+    });
+    router.push("/login");
+    router.refresh();
   }
 
   const searching = query.trim().length > 0;
@@ -55,15 +69,24 @@ export function CaseList({ initialCases }: { initialCases: MedicalCase[] }) {
                 Архив рентгена, КТ и МРТ
               </h1>
             </div>
-            <button
-              type="button"
-              onClick={() => void createCase()}
-              disabled={creating}
-              className="hidden min-h-11 shrink-0 items-center gap-2 rounded-full bg-accent px-4 text-sm font-semibold text-white shadow-lg shadow-accent/20 hover:bg-accent-hover disabled:opacity-60 md:inline-flex"
-            >
-              <PlusIcon className="h-5 w-5" />
-              {creating ? "Создание…" : "Добавить случай"}
-            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void logout()}
+                className="min-h-11 rounded-xl px-3 text-sm font-medium text-muted hover:bg-surface hover:text-ink"
+              >
+                Выйти
+              </button>
+              <button
+                type="button"
+                onClick={() => void createCase()}
+                disabled={creating}
+                className="hidden min-h-11 shrink-0 items-center gap-2 rounded-full bg-accent px-4 text-sm font-semibold text-white shadow-lg shadow-accent/20 hover:bg-accent-hover disabled:opacity-60 md:inline-flex"
+              >
+                <PlusIcon className="h-5 w-5" />
+                {creating ? "Создание…" : "Добавить случай"}
+              </button>
+            </div>
           </div>
 
           <div>
