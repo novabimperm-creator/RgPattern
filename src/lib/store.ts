@@ -2,10 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import type { CaseFile, Database, MedicalCase } from "./types";
 import { isPreviewableImage, MAX_FILE_SIZE } from "./files";
-
-const DATA_DIR = path.join(process.cwd(), "data");
-const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
-const DB_PATH = path.join(DATA_DIR, "cases.json");
+import { DB_PATH, UPLOADS_DIR } from "./paths";
 
 let writeQueue: Promise<unknown> = Promise.resolve();
 

@@ -5,6 +5,7 @@ import {
   clearSessionCookie,
   hasValidSession,
   isAuthConfigured,
+  isSecureRequest,
   sessionCookieValue,
   setupPassword,
 } from "@/lib/auth";
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
   }
 
   const password = typeof body.password === "string" ? body.password : "";
-  const secure = new URL(request.url).protocol === "https:";
+  const secure = isSecureRequest(request);
 
   if (action === "setup") {
     if (await isAuthConfigured()) {

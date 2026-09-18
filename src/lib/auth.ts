@@ -1,12 +1,11 @@
 import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { promises as fs } from "fs";
-import path from "path";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
+import { AUTH_PATH, DATA_DIR } from "./paths";
 import { isAllowedOrigin } from "./rate-limit";
 
-const AUTH_PATH = path.join(process.cwd(), "data", "auth.json");
 export const SESSION_COOKIE = "rgpattern_session";
 const SESSION_DAYS = 30;
 const SCRYPT_KEYLEN = 32;
@@ -62,7 +61,7 @@ async function readAuth(): Promise<AuthFile | null> {
 }
 
 async function writeAuth(file: AuthFile) {
-  await fs.mkdir(path.dirname(AUTH_PATH), { recursive: true });
+  await fs.mkdir(DATA_DIR, { recursive: true });
   const tmp = `${AUTH_PATH}.${process.pid}.tmp`;
   await fs.writeFile(tmp, JSON.stringify(file, null, 2), "utf8");
   await fs.rename(tmp, AUTH_PATH);
@@ -143,6 +142,18 @@ export async function requireApiSession(request?: Request): Promise<NextResponse
     return NextResponse.json({ error: "Нужна авторизация" }, { status: 401 });
   }
   return null;
+}
+
+export function isSecureRequest(request: Request): boolean {
+  const forwarded = request.headers.get("x-forwarded-proto");
+  if (forwarded) {
+    return forwarded.split(",")[0]?.trim() === "https";
+  }
+  try {
+    return new URL(request.url).protocol === "https:";
+  } catch {
+    return false;
+  }
 }
 
 export function attachSessionCookie(response: NextResponse, token: string, secure: boolean) {
