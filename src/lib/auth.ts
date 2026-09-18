@@ -2,7 +2,7 @@ import { createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { promises as fs } from "fs";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { AUTH_PATH, DATA_DIR } from "./paths";
+import { AUTH_PATH, DATA_DIR, isFsNotFound } from "./paths";
 import type { PublicUser, Role } from "./types";
 import { isAllowedOrigin } from "./rate-limit";
 
@@ -78,8 +78,9 @@ async function readRaw(): Promise<LegacyAuthFile | null> {
   try {
     const raw = await fs.readFile(AUTH_PATH, "utf8");
     return JSON.parse(raw) as LegacyAuthFile;
-  } catch {
-    return null;
+  } catch (error) {
+    if (isFsNotFound(error)) return null;
+    throw error;
   }
 }
 

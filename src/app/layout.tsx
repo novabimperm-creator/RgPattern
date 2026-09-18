@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { IBM_Plex_Mono, Manrope } from "next/font/google";
+import { PersistenceNotice } from "@/components/PersistenceNotice";
 import "./globals.css";
 
 const manrope = Manrope({
@@ -22,6 +23,8 @@ export const metadata: Metadata = {
   applicationName: "RgPattern",
 };
 
+export const dynamic = "force-dynamic";
+
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
@@ -39,7 +42,10 @@ export default function RootLayout({
       lang="ru"
       className={`${manrope.variable} ${ibmPlexMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <PersistenceNotice />
+        {children}
+      </body>
     </html>
   );
 }

@@ -2,7 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import type { CaseFile, Database, MedicalCase } from "./types";
 import { isPreviewableImage, MAX_FILE_SIZE } from "./files";
-import { DB_PATH, UPLOADS_DIR } from "./paths";
+import { DB_PATH, isFsNotFound, UPLOADS_DIR } from "./paths";
 import { isOrganSystemId } from "./systems";
 
 let writeQueue: Promise<unknown> = Promise.resolve();
@@ -22,16 +22,18 @@ async function ensureDirs() {
 
 async function readDb(): Promise<Database> {
   await ensureDirs();
+  let raw: string;
   try {
-    const raw = await fs.readFile(DB_PATH, "utf8");
-    const parsed = JSON.parse(raw) as Database;
-    if (!parsed || !Array.isArray(parsed.cases)) {
-      return { cases: [] };
-    }
-    return { cases: parsed.cases.map(normalizeCase) };
-  } catch {
-    return { cases: [] };
+    raw = await fs.readFile(DB_PATH, "utf8");
+  } catch (error) {
+    if (isFsNotFound(error)) return { cases: [] };
+    throw error;
   }
+  const parsed = JSON.parse(raw) as Database;
+  if (!parsed || !Array.isArray(parsed.cases)) {
+    throw new Error("Файл архива повреждён. Случаи не перезаписаны.");
+  }
+  return { cases: parsed.cases.map(normalizeCase) };
 }
 
 async function writeDb(db: Database) {

@@ -10,6 +10,7 @@ import {
   setupSuperadmin,
 } from "@/lib/auth";
 import { allowRequest, clientIp } from "@/lib/rate-limit";
+import { rejectIfEphemeral } from "@/lib/persistence";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -47,6 +48,8 @@ export async function POST(request: Request) {
   const secure = isSecureRequest(request);
 
   if (action === "setup") {
+    const ephemeral = rejectIfEphemeral();
+    if (ephemeral) return ephemeral;
     if (await isAuthConfigured()) {
       return NextResponse.json({ error: "Суперадмин уже создан" }, { status: 400 });
     }

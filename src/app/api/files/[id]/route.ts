@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import { NextResponse } from "next/server";
 import { getSession, isDenied, requireApiRole } from "@/lib/auth";
 import { contentDisposition } from "@/lib/files";
+import { rejectIfEphemeral } from "@/lib/persistence";
 import { deleteFile, filePath, getFileRecord } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -48,6 +49,8 @@ export async function GET(request: Request, context: RouteContext) {
 export async function DELETE(request: Request, context: RouteContext) {
   const auth = await requireApiRole(request, "superadmin");
   if (isDenied(auth)) return auth;
+  const ephemeral = rejectIfEphemeral();
+  if (ephemeral) return ephemeral;
   const { id } = await context.params;
   const updated = await deleteFile(id);
   if (!updated) {

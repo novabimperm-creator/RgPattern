@@ -6,9 +6,10 @@ import { useRouter } from "next/navigation";
 
 type AuthFormProps = {
   configured: boolean;
+  storageWarning?: string | null;
 };
 
-export function AuthForm({ configured }: AuthFormProps) {
+export function AuthForm({ configured, storageWarning }: AuthFormProps) {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -60,6 +61,11 @@ export function AuthForm({ configured }: AuthFormProps) {
           ? "Смотреть снимки можно без входа. Добавлять, изменять и скачивать — только после авторизации."
           : "Первый пользователь станет суперадмином: сможет удалять случаи и регистрировать коллег."}
       </p>
+      {storageWarning ? (
+        <p className="mt-4 rounded-xl bg-danger-soft px-3 py-2 text-sm leading-6 text-danger">
+          {storageWarning}
+        </p>
+      ) : null}
 
       <form onSubmit={(event) => void onSubmit(event)} className="mt-6 space-y-4 rounded-2xl border border-line bg-surface p-5">
         <label className="block">

@@ -21,9 +21,11 @@ const FIELD_LABEL: Record<"system" | "diagnosis" | "description" | "comments", s
 export function CaseList({
   initialCases,
   viewer,
+  ephemeral = false,
 }: {
   initialCases: MedicalCase[];
   viewer: PublicUser | null;
+  ephemeral?: boolean;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -31,6 +33,7 @@ export function CaseList({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [error, setError] = useState("");
   const { canEdit } = permissionsFor(viewer);
+  const canCreate = canEdit && !ephemeral;
 
   const filtered = useMemo(
     () => initialCases.filter((item) => caseMatchesQuery(item, query)),
@@ -84,7 +87,7 @@ export function CaseList({
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <AuthNav viewer={viewer} />
-              {canEdit ? (
+              {canCreate ? (
                 <button
                   type="button"
                   onClick={() => setPickerOpen(true)}
@@ -141,7 +144,8 @@ export function CaseList({
         {filtered.length === 0 ? (
           <EmptyState
             hasCases={initialCases.length > 0}
-            canEdit={canEdit}
+            canEdit={canCreate}
+            ephemeral={ephemeral}
             onCreate={() => setPickerOpen(true)}
           />
         ) : (
@@ -159,7 +163,7 @@ export function CaseList({
         )}
       </main>
 
-      {canEdit ? (
+      {canCreate ? (
         <button
           type="button"
           onClick={() => setPickerOpen(true)}
@@ -171,7 +175,7 @@ export function CaseList({
         </button>
       ) : null}
 
-      {pickerOpen ? (
+      {pickerOpen && canCreate ? (
         <SystemPickerDialog
           pending={creating}
           onCancel={() => {
@@ -260,27 +264,34 @@ function CaseCard({
 function EmptyState({
   hasCases,
   canEdit,
+  ephemeral,
   onCreate,
 }: {
   hasCases: boolean;
   canEdit: boolean;
+  ephemeral: boolean;
   onCreate: () => void;
 }) {
+  const title = hasCases
+    ? "Ничего не найдено"
+    : ephemeral
+      ? "Архив пустой после обновления"
+      : "Пока нет случаев";
+  const description = hasCases
+    ? "Попробуйте другой запрос — поиск идёт по системе, заключению, описанию и заметкам."
+    : ephemeral
+      ? "Railway заново собрал контейнер. Без Volume случаи и снимки из предыдущей версии удаляются. Подключите диск /app/data, дождитесь редеплоя и загрузите архив снова. GitHub эти файлы не хранит."
+      : canEdit
+        ? "Нажмите «+», чтобы создать первый случай и прикрепить снимки рентгена, КТ или МРТ."
+        : "Пока нет опубликованных случаев.";
+
   return (
     <div className="mx-auto max-w-lg rounded-3xl border border-dashed border-line bg-surface px-6 py-14 text-center">
       <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-soft text-accent">
         <SearchIcon className="h-7 w-7" />
       </div>
-      <h2 className="text-xl font-semibold">
-        {hasCases ? "Ничего не найдено" : "Пока нет случаев"}
-      </h2>
-      <p className="mt-2 text-sm leading-6 text-muted">
-        {hasCases
-          ? "Попробуйте другой запрос — поиск идёт по системе, заключению, описанию и заметкам."
-          : canEdit
-            ? "Нажмите «+», чтобы создать первый случай и прикрепить снимки рентгена, КТ или МРТ."
-            : "Пока нет опубликованных случаев."}
-      </p>
+      <h2 className="text-xl font-semibold">{title}</h2>
+      <p className="mt-2 text-sm leading-6 text-muted">{description}</p>
       {hasCases || !canEdit ? null : (
         <button
           type="button"

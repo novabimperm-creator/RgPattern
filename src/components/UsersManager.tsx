@@ -102,6 +102,20 @@ export function UsersManager({ initialUsers }: { initialUsers: PublicUser[] }) {
           </button>
         </form>
 
+        <section className="rounded-2xl border border-line bg-surface p-4">
+          <h2 className="text-base font-semibold">Резервная копия</h2>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            Скачайте случаи, снимки и учётные записи одним файлом. Делайте копию после больших загрузок —
+            git push на Railway без Volume стирает архив.
+          </p>
+          <a
+            href="/api/backup"
+            className="mt-3 inline-flex min-h-11 items-center rounded-xl bg-accent px-4 text-sm font-semibold text-white hover:bg-accent-hover"
+          >
+            Скачать архив (tar.gz)
+          </a>
+        </section>
+
         <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
           {users.map((user) => (
             <li key={user.id} className="flex items-center justify-between gap-3 px-4 py-3">
