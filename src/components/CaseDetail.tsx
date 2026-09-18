@@ -155,7 +155,8 @@ export function CaseDetail({ initialCase, viewer }: CaseDetailProps) {
         <section className="space-y-4 rounded-2xl border border-line bg-surface p-4 sm:p-5">
           <label className="block">
             <span className="text-sm font-semibold text-ink">
-              Система <span className="text-danger">*</span>
+              Система
+              {canEdit ? <span className="text-danger"> *</span> : null}
             </span>
             {canEdit ? (
               <select
