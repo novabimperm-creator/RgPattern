@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiSession } from "@/lib/auth";
+import { isDenied, requireApiRole } from "@/lib/auth";
 import { deleteCase, getCase, updateCase } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
@@ -7,9 +7,7 @@ export const runtime = "nodejs";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
-export async function GET(request: Request, context: RouteContext) {
-  const denied = await requireApiSession(request);
-  if (denied) return denied;
+export async function GET(_request: Request, context: RouteContext) {
   const { id } = await context.params;
   const item = await getCase(id);
   if (!item) {
@@ -19,8 +17,8 @@ export async function GET(request: Request, context: RouteContext) {
 }
 
 export async function PATCH(request: Request, context: RouteContext) {
-  const denied = await requireApiSession(request);
-  if (denied) return denied;
+  const auth = await requireApiRole(request, "user");
+  if (isDenied(auth)) return auth;
   const { id } = await context.params;
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const updated = await updateCase(id, {
@@ -35,8 +33,8 @@ export async function PATCH(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(request: Request, context: RouteContext) {
-  const denied = await requireApiSession(request);
-  if (denied) return denied;
+  const auth = await requireApiRole(request, "superadmin");
+  if (isDenied(auth)) return auth;
   const { id } = await context.params;
   const ok = await deleteCase(id);
   if (!ok) {

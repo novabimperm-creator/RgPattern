@@ -2,19 +2,22 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { CaseFile, MedicalCase } from "@/lib/types";
+import type { CaseFile, MedicalCase, PublicUser } from "@/lib/types";
+import { permissionsFor } from "@/lib/types";
 import { formatDateTime } from "@/lib/files";
+import { AuthNav } from "./AuthNav";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { FileGallery } from "./FileGallery";
 import { ArrowLeftIcon, TrashIcon } from "./Icons";
 
 type CaseDetailProps = {
   initialCase: MedicalCase;
+  viewer: PublicUser | null;
 };
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
-export function CaseDetail({ initialCase }: CaseDetailProps) {
+export function CaseDetail({ initialCase, viewer }: CaseDetailProps) {
   const router = useRouter();
   const [item, setItem] = useState<MedicalCase>(initialCase);
   const [saveState, setSaveState] = useState<SaveState>("idle");
@@ -26,8 +29,10 @@ export function CaseDetail({ initialCase }: CaseDetailProps) {
     comments: initialCase.comments,
   });
   const caseId = initialCase.id;
+  const { canEdit, canDelete } = permissionsFor(viewer);
 
   const persist = useCallback(async () => {
+    if (!canEdit) return;
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     setSaveState("saving");
     try {
@@ -49,9 +54,10 @@ export function CaseDetail({ initialCase }: CaseDetailProps) {
     } catch {
       setSaveState("error");
     }
-  }, [caseId]);
+  }, [canEdit, caseId]);
 
   function scheduleSave(patch: Partial<typeof draft.current>) {
+    if (!canEdit) return;
     draft.current = { ...draft.current, ...patch };
     setItem((current) => ({ ...current, ...patch }));
     setSaveState("saving");
@@ -107,21 +113,32 @@ export function CaseDetail({ initialCase }: CaseDetailProps) {
             <p className="truncate text-sm font-semibold sm:text-base">
               {item.diagnosis.trim() || "Новый случай"}
             </p>
-            <p className="truncate text-xs text-muted">{saveLabel}</p>
+          <p className="truncate text-xs text-muted">
+            {canEdit ? saveLabel : `Обновлён ${formatDateTime(item.updatedAt)}`}
+          </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setConfirmDelete(true)}
-            className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-danger hover:bg-danger-soft"
-          >
-            <TrashIcon className="h-4 w-4" />
-            <span className="hidden sm:inline">Удалить</span>
-          </button>
+          <AuthNav viewer={viewer} />
+          {canDelete ? (
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              className="inline-flex min-h-11 items-center gap-2 rounded-xl px-3 text-sm font-medium text-danger hover:bg-danger-soft"
+            >
+              <TrashIcon className="h-4 w-4" />
+              <span className="hidden sm:inline">Удалить</span>
+            </button>
+          ) : null}
         </div>
       </header>
 
       <main className="mx-auto grid w-full max-w-6xl gap-6 px-3 py-5 sm:px-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-        <FileGallery caseId={item.id} files={item.files} onChanged={onFilesChanged} />
+        <FileGallery
+          caseId={item.id}
+          files={item.files}
+          canEdit={canEdit}
+          canDelete={canDelete}
+          onChanged={onFilesChanged}
+        />
 
         <section className="space-y-4 rounded-2xl border border-line bg-surface p-4 sm:p-5">
           <label className="block">
@@ -130,8 +147,9 @@ export function CaseDetail({ initialCase }: CaseDetailProps) {
               value={item.diagnosis}
               onChange={(event) => scheduleSave({ diagnosis: event.target.value })}
               onBlur={() => void persist()}
+              readOnly={!canEdit}
               placeholder="Например, перелом лучевой кости"
-              className="mt-2 w-full rounded-xl border border-line bg-bg px-3 py-3 text-base outline-none ring-accent/30 focus:border-accent focus:ring-4"
+              className="mt-2 w-full rounded-xl border border-line bg-bg px-3 py-3 text-base outline-none ring-accent/30 focus:border-accent focus:ring-4 read-only:focus:border-line read-only:focus:ring-0"
             />
           </label>
 
@@ -141,9 +159,10 @@ export function CaseDetail({ initialCase }: CaseDetailProps) {
               value={item.description}
               onChange={(event) => scheduleSave({ description: event.target.value })}
               onBlur={() => void persist()}
+              readOnly={!canEdit}
               placeholder="Клиническая картина, область исследования, особенности снимков"
               rows={6}
-              className="mt-2 min-h-32 w-full resize-y rounded-xl border border-line bg-bg px-3 py-3 text-base leading-7 outline-none ring-accent/30 focus:border-accent focus:ring-4"
+              className="mt-2 min-h-32 w-full resize-y rounded-xl border border-line bg-bg px-3 py-3 text-base leading-7 outline-none ring-accent/30 focus:border-accent focus:ring-4 read-only:focus:border-line read-only:focus:ring-0"
             />
           </label>
 
@@ -153,9 +172,10 @@ export function CaseDetail({ initialCase }: CaseDetailProps) {
               value={item.comments}
               onChange={(event) => scheduleSave({ comments: event.target.value })}
               onBlur={() => void persist()}
+              readOnly={!canEdit}
               placeholder="Заметки, динамика, вопросы коллегам"
               rows={8}
-              className="mt-2 min-h-40 w-full resize-y rounded-xl border border-line bg-bg px-3 py-3 text-base leading-7 outline-none ring-accent/30 focus:border-accent focus:ring-4"
+              className="mt-2 min-h-40 w-full resize-y rounded-xl border border-line bg-bg px-3 py-3 text-base leading-7 outline-none ring-accent/30 focus:border-accent focus:ring-4 read-only:focus:border-line read-only:focus:ring-0"
             />
           </label>
         </section>

@@ -1,6 +1,6 @@
 import { promises as fs } from "fs";
 import { NextResponse } from "next/server";
-import { requireApiSession } from "@/lib/auth";
+import { getSession, isDenied, requireApiRole } from "@/lib/auth";
 import { contentDisposition } from "@/lib/files";
 import { deleteFile, filePath, getFileRecord } from "@/lib/store";
 
@@ -10,17 +10,23 @@ export const runtime = "nodejs";
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function GET(request: Request, context: RouteContext) {
-  const denied = await requireApiSession(request);
-  if (denied) return denied;
   const { id } = await context.params;
   const record = await getFileRecord(id);
   if (!record) {
     return NextResponse.json({ error: "Файл не найден" }, { status: 404 });
   }
 
+  const download = new URL(request.url).searchParams.get("download") === "1";
+  const viewingImage = record.isImage && !download;
+  if (!viewingImage) {
+    const user = await getSession();
+    if (!user) {
+      return NextResponse.json({ error: "Нужна авторизация, чтобы скачать файл" }, { status: 401 });
+    }
+  }
+
   try {
     const data = await fs.readFile(filePath(id));
-    const download = new URL(request.url).searchParams.get("download") === "1";
     const disposition = contentDisposition(
       record.originalName,
       download || !record.isImage ? "attachment" : "inline",
@@ -40,8 +46,8 @@ export async function GET(request: Request, context: RouteContext) {
 }
 
 export async function DELETE(request: Request, context: RouteContext) {
-  const denied = await requireApiSession(request);
-  if (denied) return denied;
+  const auth = await requireApiRole(request, "superadmin");
+  if (isDenied(auth)) return auth;
   const { id } = await context.params;
   const updated = await deleteFile(id);
   if (!updated) {

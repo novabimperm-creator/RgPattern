@@ -8,11 +8,12 @@ import { ChevronIcon, CloseIcon, DownloadIcon } from "./Icons";
 type LightboxProps = {
   files: CaseFile[];
   index: number;
+  canDownload?: boolean;
   onClose: () => void;
   onIndexChange: (index: number) => void;
 };
 
-export function Lightbox({ files, index, onClose, onIndexChange }: LightboxProps) {
+export function Lightbox({ files, index, canDownload = false, onClose, onIndexChange }: LightboxProps) {
   const current = files[index];
   const [touchStart, setTouchStart] = useState<number | null>(null);
 
@@ -61,14 +62,16 @@ export function Lightbox({ files, index, onClose, onIndexChange }: LightboxProps
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <a
-            href={fileUrl(current.id, true)}
-            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-white hover:bg-white/10"
-            aria-label="Скачать снимок"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <DownloadIcon className="h-5 w-5" />
-          </a>
+          {canDownload ? (
+            <a
+              href={fileUrl(current.id, true)}
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-white hover:bg-white/10"
+              aria-label="Скачать снимок"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <DownloadIcon className="h-5 w-5" />
+            </a>
+          ) : null}
           <button
             type="button"
             onClick={onClose}

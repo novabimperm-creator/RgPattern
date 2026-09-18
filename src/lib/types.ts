@@ -21,3 +21,25 @@ export type MedicalCase = {
 export type Database = {
   cases: MedicalCase[];
 };
+
+export type Role = "user" | "superadmin";
+
+export type PublicUser = {
+  id: string;
+  username: string;
+  role: Role;
+};
+
+export type ViewerPermissions = {
+  canEdit: boolean;
+  canDelete: boolean;
+  canManageUsers: boolean;
+};
+
+export function permissionsFor(user: PublicUser | null): ViewerPermissions {
+  return {
+    canEdit: user != null,
+    canDelete: user?.role === "superadmin",
+    canManageUsers: user?.role === "superadmin",
+  };
+}

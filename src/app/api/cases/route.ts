@@ -1,21 +1,19 @@
 import { NextResponse } from "next/server";
-import { requireApiSession } from "@/lib/auth";
+import { isDenied, requireApiRole } from "@/lib/auth";
 import { allowRequest, clientIp } from "@/lib/rate-limit";
 import { createCase, listCases } from "@/lib/store";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function GET(request: Request) {
-  const denied = await requireApiSession(request);
-  if (denied) return denied;
+export async function GET() {
   const cases = await listCases();
   return NextResponse.json(cases);
 }
 
 export async function POST(request: Request) {
-  const denied = await requireApiSession(request);
-  if (denied) return denied;
+  const auth = await requireApiRole(request, "user");
+  if (isDenied(auth)) return auth;
   if (!allowRequest(`create:${clientIp(request)}`, 8, 15 * 60 * 1000)) {
     return NextResponse.json(
       { error: "Слишком много новых случаев. Подождите немного." },

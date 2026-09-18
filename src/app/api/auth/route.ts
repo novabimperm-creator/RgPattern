@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import {
   attachSessionCookie,
-  checkPassword,
   clearSessionCookie,
-  hasValidSession,
+  findUserByCredentials,
+  getSession,
   isAuthConfigured,
-  sessionCookieValue,
-  setupPassword,
+  sessionCookieFor,
+  setupSuperadmin,
 } from "@/lib/auth";
 import { allowRequest, clientIp } from "@/lib/rate-limit";
 
@@ -16,7 +16,7 @@ export const runtime = "nodejs";
 export async function GET() {
   return NextResponse.json({
     configured: await isAuthConfigured(),
-    authenticated: await hasValidSession(),
+    user: await getSession(),
   });
 }
 
@@ -26,8 +26,7 @@ export async function POST(request: Request) {
   const honeypot = typeof body.website === "string" ? body.website.trim() : "";
 
   if (action === "logout") {
-    const response = NextResponse.json({ ok: true });
-    return clearSessionCookie(response);
+    return clearSessionCookie(NextResponse.json({ ok: true }));
   }
 
   const ip = clientIp(request);
@@ -39,38 +38,37 @@ export async function POST(request: Request) {
   }
 
   if (honeypot) {
-    return NextResponse.json({ error: "Неверный пароль" }, { status: 401 });
+    return NextResponse.json({ error: "Неверный логин или пароль" }, { status: 401 });
   }
 
+  const username = typeof body.username === "string" ? body.username : "";
   const password = typeof body.password === "string" ? body.password : "";
   const secure = new URL(request.url).protocol === "https:";
 
   if (action === "setup") {
     if (await isAuthConfigured()) {
-      return NextResponse.json({ error: "Пароль уже задан" }, { status: 400 });
+      return NextResponse.json({ error: "Суперадмин уже создан" }, { status: 400 });
     }
-    if (password.trim().length < 8) {
-      return NextResponse.json({ error: "Пароль должен быть не короче 8 символов" }, { status: 400 });
+    const user = await setupSuperadmin(username, password);
+    if (!user) {
+      return NextResponse.json(
+        { error: "Задайте логин (2–32 символа) и пароль не короче 8 символов" },
+        { status: 400 },
+      );
     }
-    const created = await setupPassword(password);
-    if (!created) {
-      return NextResponse.json({ error: "Не удалось сохранить пароль" }, { status: 400 });
-    }
-    const token = await sessionCookieValue();
-    const response = NextResponse.json({ ok: true }, { status: 201 });
+    const token = await sessionCookieFor(user.id);
+    const response = NextResponse.json({ ok: true, user }, { status: 201 });
     if (token) attachSessionCookie(response, token, secure);
     return response;
   }
 
   if (action === "login") {
-    if (!(await isAuthConfigured())) {
-      return NextResponse.json({ error: "Сначала задайте пароль" }, { status: 400 });
+    const user = await findUserByCredentials(username, password);
+    if (!user) {
+      return NextResponse.json({ error: "Неверный логин или пароль" }, { status: 401 });
     }
-    if (!(await checkPassword(password))) {
-      return NextResponse.json({ error: "Неверный пароль" }, { status: 401 });
-    }
-    const token = await sessionCookieValue();
-    const response = NextResponse.json({ ok: true });
+    const token = await sessionCookieFor(user.id);
+    const response = NextResponse.json({ ok: true, user });
     if (token) attachSessionCookie(response, token, secure);
     return response;
   }

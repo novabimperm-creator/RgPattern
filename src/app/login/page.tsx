@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 import { AuthForm } from "@/components/AuthForm";
-import { hasValidSession, isAuthConfigured } from "@/lib/auth";
+import { getSession, isAuthConfigured } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function LoginPage() {
-  if (await hasValidSession()) redirect("/");
+  if (await getSession()) redirect("/");
   return <AuthForm configured={await isAuthConfigured()} />;
 }
