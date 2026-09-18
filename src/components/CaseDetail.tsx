@@ -100,7 +100,7 @@ export function CaseDetail({ initialCase, viewer }: CaseDetailProps) {
   }
 
   function requestLeave() {
-    if (dirty) {
+    if (dirty || saving) {
       setConfirmLeave(true);
       return;
     }
@@ -112,14 +112,14 @@ export function CaseDetail({ initialCase, viewer }: CaseDetailProps) {
   }, []);
 
   useEffect(() => {
-    if (!dirty) return;
+    if (!dirty && !saving) return;
     const onBeforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
     };
     window.addEventListener("beforeunload", onBeforeUnload);
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, [dirty]);
+  }, [dirty, saving]);
 
   useEffect(() => {
     if (!canEdit) return;
@@ -145,14 +145,14 @@ export function CaseDetail({ initialCase, viewer }: CaseDetailProps) {
   const saveLabel =
     saveState === "saving"
       ? "Сохранение…"
-      : saveState === "saved"
-        ? "Сохранено"
-        : saveState === "error"
-          ? systemMissing
-            ? "Выберите систему"
-            : "Ошибка сохранения"
-          : dirty
-            ? "Есть несохранённые изменения"
+      : dirty
+        ? "Есть несохранённые изменения"
+        : saveState === "saved"
+          ? "Сохранено"
+          : saveState === "error"
+            ? systemMissing
+              ? "Выберите систему"
+              : "Ошибка сохранения"
             : `Обновлён ${formatDateTime(item.updatedAt)}`;
   const saveDisabled = !dirty || saving;
 
