@@ -5,6 +5,7 @@ import {
   findUserByCredentials,
   getSession,
   isAuthConfigured,
+  isSecureRequest,
   sessionCookieFor,
   setupSuperadmin,
 } from "@/lib/auth";
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
 
   const username = typeof body.username === "string" ? body.username : "";
   const password = typeof body.password === "string" ? body.password : "";
-  const secure = new URL(request.url).protocol === "https:";
+  const secure = isSecureRequest(request);
 
   if (action === "setup") {
     if (await isAuthConfigured()) {
