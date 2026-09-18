@@ -18,7 +18,7 @@ const ibmPlexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: "RgPattern — архив снимков",
-  description: "Систематизация случаев рентгена, КТ и МРТ: снимки, файлы, диагноз и комментарии.",
+  description: "Систематизация случаев рентгена, КТ и МРТ: снимки, файлы, заключение и заметки.",
   applicationName: "RgPattern",
 };
 

@@ -190,7 +190,7 @@ export function CaseDetail({ initialCase, viewer }: CaseDetailProps) {
           </label>
 
           <label className="block">
-            <span className="text-sm font-semibold text-ink">Диагноз</span>
+            <span className="text-sm font-semibold text-ink">Заключение</span>
             <input
               value={item.diagnosis}
               onChange={(event) => scheduleSave({ diagnosis: event.target.value })}
@@ -215,13 +215,13 @@ export function CaseDetail({ initialCase, viewer }: CaseDetailProps) {
           </label>
 
           <label className="block">
-            <span className="text-sm font-semibold text-ink">Комментарии</span>
+            <span className="text-sm font-semibold text-ink">Заметки</span>
             <textarea
               value={item.comments}
               onChange={(event) => scheduleSave({ comments: event.target.value })}
               onBlur={() => void persist()}
               readOnly={!canEdit}
-              placeholder="Заметки, динамика, вопросы коллегам"
+              placeholder="Динамика, вопросы коллегам"
               rows={8}
               className="mt-2 min-h-40 w-full resize-y rounded-xl border border-line bg-bg px-3 py-3 text-base leading-7 outline-none ring-accent/30 focus:border-accent focus:ring-4 read-only:focus:border-line read-only:focus:ring-0"
             />
@@ -232,7 +232,7 @@ export function CaseDetail({ initialCase, viewer }: CaseDetailProps) {
       <ConfirmDialog
         open={confirmDelete}
         title="Удалить случай?"
-        message="Будут удалены система, диагноз, описание, комментарии и все прикреплённые файлы."
+        message="Будут удалены система, заключение, описание, заметки и все прикреплённые файлы."
         onCancel={() => setConfirmDelete(false)}
         onConfirm={() => void removeCase()}
       />

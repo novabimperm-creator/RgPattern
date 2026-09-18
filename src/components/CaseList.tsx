@@ -13,9 +13,9 @@ import { SystemPickerDialog } from "./SystemPickerDialog";
 
 const FIELD_LABEL: Record<"system" | "diagnosis" | "description" | "comments", string> = {
   system: "системе",
-  diagnosis: "диагнозу",
+  diagnosis: "заключению",
   description: "описанию",
-  comments: "комментариям",
+  comments: "заметкам",
 };
 
 export function CaseList({
@@ -109,7 +109,7 @@ export function CaseList({
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Диагноз, система, описание, комментарии"
+                placeholder="Заключение, система, описание, заметки"
                 autoComplete="off"
                 className="min-h-12 w-full rounded-xl border border-line bg-surface py-2.5 pl-11 pr-12 text-base outline-none ring-accent/30 focus:border-accent focus:ring-4 [&::-webkit-search-cancel-button]:hidden"
               />
@@ -127,7 +127,7 @@ export function CaseList({
             <p className="mt-1.5 text-xs text-muted">
               {searching
                 ? `Найдено ${pluralRu(filtered.length, "случай", "случая", "случаев")}`
-                : "Ищет сразу по системе, диагнозу, описанию и комментариям"}
+                : "Ищет сразу по системе, заключению, описанию и заметкам"}
             </p>
           </div>
         </div>
@@ -233,7 +233,7 @@ function CaseCard({
           {item.description.trim() || "Описание пока не заполнено"}
         </p>
         {onlyComments ? (
-          <p className="text-xs font-medium text-accent">Совпадение в комментариях</p>
+          <p className="text-xs font-medium text-accent">Совпадение в заметках</p>
         ) : matched.length > 0 ? (
           <p className="text-xs text-muted">
             Совпадение по {matched.map((field) => FIELD_LABEL[field]).join(", ")}
@@ -276,7 +276,7 @@ function EmptyState({
       </h2>
       <p className="mt-2 text-sm leading-6 text-muted">
         {hasCases
-          ? "Попробуйте другой запрос — поиск идёт по системе, диагнозу, описанию и комментариям."
+          ? "Попробуйте другой запрос — поиск идёт по системе, заключению, описанию и заметкам."
           : canEdit
             ? "Нажмите «+», чтобы создать первый случай и прикрепить снимки рентгена, КТ или МРТ."
             : "Пока нет опубликованных случаев."}
