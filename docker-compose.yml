@@ -1,0 +1,14 @@
+services:
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      DATA_DIR: /app/data
+    volumes:
+      - rgpattern-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  rgpattern-data:
