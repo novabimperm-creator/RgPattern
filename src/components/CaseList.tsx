@@ -4,7 +4,14 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { MedicalCase } from "@/lib/types";
 import { fileUrl, formatDate, pluralRu } from "@/lib/files";
-import { ImageIcon, PlusIcon, SearchIcon } from "./Icons";
+import { caseMatchesQuery, matchingTextFields } from "@/lib/search";
+import { CloseIcon, ImageIcon, PlusIcon, SearchIcon } from "./Icons";
+
+const FIELD_LABEL: Record<"diagnosis" | "description" | "comments", string> = {
+  diagnosis: "диагнозу",
+  description: "описанию",
+  comments: "комментариям",
+};
 
 export function CaseList({ initialCases }: { initialCases: MedicalCase[] }) {
   const router = useRouter();
@@ -12,16 +19,10 @@ export function CaseList({ initialCases }: { initialCases: MedicalCase[] }) {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
 
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    if (!needle) return initialCases;
-    return initialCases.filter((item) =>
-      [item.diagnosis, item.description, item.comments]
-        .join("\n")
-        .toLowerCase()
-        .includes(needle),
-    );
-  }, [initialCases, query]);
+  const filtered = useMemo(
+    () => initialCases.filter((item) => caseMatchesQuery(item, query)),
+    [initialCases, query],
+  );
 
   async function createCase() {
     if (creating) return;
@@ -39,35 +40,64 @@ export function CaseList({ initialCases }: { initialCases: MedicalCase[] }) {
     }
   }
 
+  const searching = query.trim().length > 0;
+
   return (
     <div className="min-h-dvh">
       <header className="sticky top-0 z-20 border-b border-line/80 bg-bg/85 backdrop-blur-md">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-3 py-3 sm:px-4 md:flex-row md:items-center">
-          <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
-              RgPattern
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3 px-3 py-3 sm:px-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
+                RgPattern
+              </p>
+              <h1 className="truncate text-lg font-semibold sm:text-xl">
+                Архив рентгена, КТ и МРТ
+              </h1>
+            </div>
+            <button
+              type="button"
+              onClick={() => void createCase()}
+              disabled={creating}
+              className="hidden min-h-11 shrink-0 items-center gap-2 rounded-full bg-accent px-4 text-sm font-semibold text-white shadow-lg shadow-accent/20 hover:bg-accent-hover disabled:opacity-60 md:inline-flex"
+            >
+              <PlusIcon className="h-5 w-5" />
+              {creating ? "Создание…" : "Добавить случай"}
+            </button>
+          </div>
+
+          <div>
+            <label htmlFor="case-search" className="mb-1.5 block text-sm font-medium text-ink">
+              Поиск по всем текстовым полям
+            </label>
+            <div className="relative">
+              <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted" />
+              <input
+                id="case-search"
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Диагноз, описание, комментарии"
+                autoComplete="off"
+                className="min-h-12 w-full rounded-xl border border-line bg-surface py-2.5 pl-11 pr-12 text-base outline-none ring-accent/30 focus:border-accent focus:ring-4 [&::-webkit-search-cancel-button]:hidden"
+              />
+              {searching ? (
+                <button
+                  type="button"
+                  onClick={() => setQuery("")}
+                  className="absolute right-2 top-1/2 inline-flex min-h-9 min-w-9 -translate-y-1/2 items-center justify-center rounded-lg text-muted hover:bg-bg hover:text-ink"
+                  aria-label="Очистить поиск"
+                >
+                  <CloseIcon className="h-4 w-4" />
+                </button>
+              ) : null}
+            </div>
+            <p className="mt-1.5 text-xs text-muted">
+              {searching
+                ? `Найдено ${pluralRu(filtered.length, "случай", "случая", "случаев")}`
+                : "Ищет сразу по диагнозу, описанию и комментариям"}
             </p>
-            <h1 className="truncate text-lg font-semibold sm:text-xl">Архив рентгена, КТ и МРТ</h1>
           </div>
-          <div className="relative min-w-0 flex-1">
-            <SearchIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Поиск по случаям"
-              aria-label="Поиск по диагнозу, описанию и комментариям"
-              className="min-h-11 w-full rounded-xl border border-line bg-surface py-2 pl-10 pr-3 text-sm outline-none ring-accent/30 focus:border-accent focus:ring-4"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => void createCase()}
-            disabled={creating}
-            className="hidden min-h-11 items-center gap-2 rounded-full bg-accent px-4 text-sm font-semibold text-white shadow-lg shadow-accent/20 hover:bg-accent-hover disabled:opacity-60 md:inline-flex"
-          >
-            <PlusIcon className="h-5 w-5" />
-            {creating ? "Создание…" : "Добавить случай"}
-          </button>
         </div>
       </header>
 
@@ -82,7 +112,11 @@ export function CaseList({ initialCases }: { initialCases: MedicalCase[] }) {
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((item) => (
               <li key={item.id}>
-                <CaseCard item={item} onOpen={() => router.push(`/cases/${item.id}`)} />
+                <CaseCard
+                  item={item}
+                  query={query}
+                  onOpen={() => router.push(`/cases/${item.id}`)}
+                />
               </li>
             ))}
           </ul>
@@ -102,10 +136,20 @@ export function CaseList({ initialCases }: { initialCases: MedicalCase[] }) {
   );
 }
 
-function CaseCard({ item, onOpen }: { item: MedicalCase; onOpen: () => void }) {
+function CaseCard({
+  item,
+  query,
+  onOpen,
+}: {
+  item: MedicalCase;
+  query: string;
+  onOpen: () => void;
+}) {
   const cover = item.files.find((file) => file.isImage);
   const imageCount = item.files.filter((file) => file.isImage).length;
   const otherCount = item.files.length - imageCount;
+  const matched = matchingTextFields(item, query);
+  const onlyComments = matched.length === 1 && matched[0] === "comments";
 
   return (
     <button
@@ -134,12 +178,22 @@ function CaseCard({ item, onOpen }: { item: MedicalCase; onOpen: () => void }) {
         <p className="line-clamp-2 min-h-10 text-sm leading-5 text-muted">
           {item.description.trim() || "Описание пока не заполнено"}
         </p>
+        {onlyComments ? (
+          <p className="text-xs font-medium text-accent">Совпадение в комментариях</p>
+        ) : matched.length > 0 ? (
+          <p className="text-xs text-muted">
+            Совпадение по {matched.map((field) => FIELD_LABEL[field]).join(", ")}
+          </p>
+        ) : null}
         <div className="mt-auto flex items-center justify-between pt-1 text-xs text-muted">
           <span>{formatDate(item.createdAt)}</span>
           <span>
             {item.files.length === 0
               ? "нет файлов"
-              : [imageCount ? pluralRu(imageCount, "фото", "фото", "фото") : "", otherCount ? pluralRu(otherCount, "файл", "файла", "файлов") : ""]
+              : [
+                  imageCount ? pluralRu(imageCount, "фото", "фото", "фото") : "",
+                  otherCount ? pluralRu(otherCount, "файл", "файла", "файлов") : "",
+                ]
                   .filter(Boolean)
                   .join(" · ")}
           </span>
@@ -153,7 +207,7 @@ function EmptyState({ hasCases, onCreate }: { hasCases: boolean; onCreate: () =>
   return (
     <div className="mx-auto max-w-lg rounded-3xl border border-dashed border-line bg-surface px-6 py-14 text-center">
       <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-soft text-accent">
-        <ImageIcon className="h-7 w-7" />
+        <SearchIcon className="h-7 w-7" />
       </div>
       <h2 className="text-xl font-semibold">
         {hasCases ? "Ничего не найдено" : "Пока нет случаев"}
