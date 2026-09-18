@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { CaseFile, MedicalCase, PublicUser } from "@/lib/types";
 import { permissionsFor } from "@/lib/types";
 import { formatDateTime } from "@/lib/files";
+import { isOrganSystemId, organSystemById, ORGAN_SYSTEMS } from "@/lib/systems";
 import { AuthNav } from "./AuthNav";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { FileGallery } from "./FileGallery";
@@ -24,6 +25,7 @@ export function CaseDetail({ initialCase, viewer }: CaseDetailProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const saveTimer = useRef<number | null>(null);
   const draft = useRef({
+    system: initialCase.system,
     diagnosis: initialCase.diagnosis,
     description: initialCase.description,
     comments: initialCase.comments,
@@ -33,6 +35,10 @@ export function CaseDetail({ initialCase, viewer }: CaseDetailProps) {
 
   const persist = useCallback(async () => {
     if (!canEdit) return;
+    if (!isOrganSystemId(draft.current.system)) {
+      setSaveState("error");
+      return;
+    }
     if (saveTimer.current) window.clearTimeout(saveTimer.current);
     setSaveState("saving");
     try {
@@ -45,6 +51,7 @@ export function CaseDetail({ initialCase, viewer }: CaseDetailProps) {
       const payload = (await response.json()) as MedicalCase;
       setItem((current) => ({
         ...current,
+        system: payload.system,
         diagnosis: payload.diagnosis,
         description: payload.description,
         comments: payload.comments,
@@ -85,13 +92,17 @@ export function CaseDetail({ initialCase, viewer }: CaseDetailProps) {
     setItem((current) => ({ ...current, files }));
   }
 
+  const selectedSystem = organSystemById(item.system);
+  const systemMissing = !isOrganSystemId(item.system);
   const saveLabel =
     saveState === "saving"
       ? "Сохранение…"
       : saveState === "saved"
         ? "Сохранено"
         : saveState === "error"
-          ? "Ошибка сохранения"
+          ? systemMissing
+            ? "Выберите систему"
+            : "Ошибка сохранения"
           : `Обновлён ${formatDateTime(item.updatedAt)}`;
 
   return (
@@ -114,6 +125,7 @@ export function CaseDetail({ initialCase, viewer }: CaseDetailProps) {
               {item.diagnosis.trim() || "Новый случай"}
             </p>
           <p className="truncate text-xs text-muted">
+            {selectedSystem ? `${selectedSystem.label} · ` : ""}
             {canEdit ? saveLabel : `Обновлён ${formatDateTime(item.updatedAt)}`}
           </p>
           </div>
@@ -141,6 +153,41 @@ export function CaseDetail({ initialCase, viewer }: CaseDetailProps) {
         />
 
         <section className="space-y-4 rounded-2xl border border-line bg-surface p-4 sm:p-5">
+          <label className="block">
+            <span className="text-sm font-semibold text-ink">
+              Система <span className="text-danger">*</span>
+            </span>
+            {canEdit ? (
+              <select
+                value={item.system}
+                required
+                onChange={(event) => scheduleSave({ system: event.target.value })}
+                onBlur={() => void persist()}
+                className="mt-2 w-full rounded-xl border border-line bg-bg px-3 py-3 text-base outline-none ring-accent/30 focus:border-accent focus:ring-4"
+              >
+                <option value="" disabled>
+                  Выберите систему органов
+                </option>
+                {ORGAN_SYSTEMS.map((entry) => (
+                  <option key={entry.id} value={entry.id}>
+                    {entry.label}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <p className="mt-2 rounded-xl border border-line bg-bg px-3 py-3 text-base">
+                {selectedSystem?.label || "Не указана"}
+              </p>
+            )}
+            {selectedSystem ? (
+              <p className="mt-2 text-sm leading-6 text-muted">
+                {selectedSystem.organs}. {selectedSystem.description}
+              </p>
+            ) : canEdit ? (
+              <p className="mt-2 text-sm text-danger">Обязательное поле — без системы случай не сохранится.</p>
+            ) : null}
+          </label>
+
           <label className="block">
             <span className="text-sm font-semibold text-ink">Диагноз</span>
             <input
@@ -184,7 +231,7 @@ export function CaseDetail({ initialCase, viewer }: CaseDetailProps) {
       <ConfirmDialog
         open={confirmDelete}
         title="Удалить случай?"
-        message="Будут удалены диагноз, описание, комментарии и все прикреплённые файлы."
+        message="Будут удалены система, диагноз, описание, комментарии и все прикреплённые файлы."
         onCancel={() => setConfirmDelete(false)}
         onConfirm={() => void removeCase()}
       />

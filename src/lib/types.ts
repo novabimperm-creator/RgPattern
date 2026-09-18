@@ -10,6 +10,7 @@ export type CaseFile = {
 
 export type MedicalCase = {
   id: string;
+  system: string;
   diagnosis: string;
   description: string;
   comments: string;

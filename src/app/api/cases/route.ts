@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isDenied, requireApiRole } from "@/lib/auth";
 import { allowRequest, clientIp } from "@/lib/rate-limit";
 import { createCase, listCases } from "@/lib/store";
+import { parseOrganSystem } from "@/lib/systems";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -25,10 +26,20 @@ export async function POST(request: Request) {
   if (contentType.includes("application/json")) {
     body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   }
-  const created = await createCase({
-    diagnosis: typeof body.diagnosis === "string" ? body.diagnosis : "",
-    description: typeof body.description === "string" ? body.description : "",
-    comments: typeof body.comments === "string" ? body.comments : "",
-  });
-  return NextResponse.json(created, { status: 201 });
+  const system = parseOrganSystem(body.system);
+  if (!system) {
+    return NextResponse.json({ error: "Выберите систему органов" }, { status: 400 });
+  }
+  try {
+    const created = await createCase({
+      system,
+      diagnosis: typeof body.diagnosis === "string" ? body.diagnosis : "",
+      description: typeof body.description === "string" ? body.description : "",
+      comments: typeof body.comments === "string" ? body.comments : "",
+    });
+    return NextResponse.json(created, { status: 201 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Не удалось создать случай";
+    return NextResponse.json({ error: message }, { status: 400 });
+  }
 }

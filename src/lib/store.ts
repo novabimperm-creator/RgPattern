@@ -2,6 +2,7 @@ import { promises as fs } from "fs";
 import path from "path";
 import type { CaseFile, Database, MedicalCase } from "./types";
 import { isPreviewableImage, MAX_FILE_SIZE } from "./files";
+import { isOrganSystemId } from "./systems";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 const UPLOADS_DIR = path.join(DATA_DIR, "uploads");
@@ -30,7 +31,7 @@ async function readDb(): Promise<Database> {
     if (!parsed || !Array.isArray(parsed.cases)) {
       return { cases: [] };
     }
-    return parsed;
+    return { cases: parsed.cases.map(normalizeCase) };
   } catch {
     return { cases: [] };
   }
@@ -45,6 +46,17 @@ async function writeDb(db: Database) {
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function normalizeCase(item: MedicalCase): MedicalCase {
+  return {
+    ...item,
+    system: isOrganSystemId(item.system) ? item.system : "",
+    diagnosis: item.diagnosis ?? "",
+    description: item.description ?? "",
+    comments: item.comments ?? "",
+    files: Array.isArray(item.files) ? item.files : [],
+  };
 }
 
 function sortCases(cases: MedicalCase[]) {
@@ -64,13 +76,17 @@ export async function getCase(id: string): Promise<MedicalCase | null> {
 }
 
 export async function createCase(
-  input: Partial<Pick<MedicalCase, "diagnosis" | "description" | "comments">> = {},
+  input: Partial<Pick<MedicalCase, "system" | "diagnosis" | "description" | "comments">> = {},
 ): Promise<MedicalCase> {
+  if (!isOrganSystemId(input.system ?? "")) {
+    throw new Error("Выберите систему органов");
+  }
   return enqueue(async () => {
     const db = await readDb();
     const timestamp = nowIso();
     const created: MedicalCase = {
       id: crypto.randomUUID(),
+      system: input.system ?? "",
       diagnosis: input.diagnosis?.trim() ?? "",
       description: input.description ?? "",
       comments: input.comments ?? "",
@@ -86,12 +102,16 @@ export async function createCase(
 
 export async function updateCase(
   id: string,
-  patch: Partial<Pick<MedicalCase, "diagnosis" | "description" | "comments">>,
+  patch: Partial<Pick<MedicalCase, "system" | "diagnosis" | "description" | "comments">>,
 ): Promise<MedicalCase | null> {
+  if (patch.system !== undefined && !isOrganSystemId(patch.system)) {
+    throw new Error("Выберите систему органов");
+  }
   return enqueue(async () => {
     const db = await readDb();
     const current = db.cases.find((item) => item.id === id);
     if (!current) return null;
+    if (patch.system !== undefined) current.system = patch.system;
     if (patch.diagnosis !== undefined) current.diagnosis = patch.diagnosis;
     if (patch.description !== undefined) current.description = patch.description;
     if (patch.comments !== undefined) current.comments = patch.comments;

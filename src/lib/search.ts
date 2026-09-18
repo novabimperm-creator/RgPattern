@@ -1,6 +1,7 @@
 import type { MedicalCase } from "./types";
+import { organSystemSearchText } from "./systems";
 
-export type TextField = "diagnosis" | "description" | "comments";
+export type TextField = "system" | "diagnosis" | "description" | "comments";
 
 function normalize(value: string): string {
   return value.toLowerCase().replace(/ё/g, "е");
@@ -15,6 +16,7 @@ export function searchTokens(query: string): string[] {
 
 export function caseTextFields(item: MedicalCase): Record<TextField, string> {
   return {
+    system: organSystemSearchText(item.system),
     diagnosis: item.diagnosis ?? "",
     description: item.description ?? "",
     comments: item.comments ?? "",
@@ -34,8 +36,7 @@ export function matchingTextFields(item: MedicalCase, query: string): TextField[
 export function caseMatchesQuery(item: MedicalCase, query: string): boolean {
   const tokens = searchTokens(query);
   if (tokens.length === 0) return true;
-  const haystack = normalize(
-    [item.diagnosis, item.description, item.comments].join("\n"),
-  );
+  const fields = caseTextFields(item);
+  const haystack = normalize(Object.values(fields).join("\n"));
   return tokens.every((token) => haystack.includes(token));
 }

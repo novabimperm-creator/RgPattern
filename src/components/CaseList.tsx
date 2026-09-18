@@ -6,10 +6,13 @@ import type { MedicalCase, PublicUser } from "@/lib/types";
 import { permissionsFor } from "@/lib/types";
 import { fileUrl, formatDate, pluralRu } from "@/lib/files";
 import { caseMatchesQuery, matchingTextFields } from "@/lib/search";
+import { organSystemById, type OrganSystemId } from "@/lib/systems";
 import { AuthNav } from "./AuthNav";
 import { CloseIcon, ImageIcon, PlusIcon, SearchIcon } from "./Icons";
+import { SystemPickerDialog } from "./SystemPickerDialog";
 
-const FIELD_LABEL: Record<"diagnosis" | "description" | "comments", string> = {
+const FIELD_LABEL: Record<"system" | "diagnosis" | "description" | "comments", string> = {
+  system: "системе",
   diagnosis: "диагнозу",
   description: "описанию",
   comments: "комментариям",
@@ -25,6 +28,7 @@ export function CaseList({
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [error, setError] = useState("");
   const { canEdit } = permissionsFor(viewer);
 
@@ -33,18 +37,23 @@ export function CaseList({
     [initialCases, query],
   );
 
-  async function createCase() {
+  async function createCase(system: OrganSystemId) {
     if (creating) return;
     setCreating(true);
     setError("");
     try {
-      const response = await fetch("/api/cases", { method: "POST" });
+      const response = await fetch("/api/cases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ system }),
+      });
       if (response.status === 401) {
         router.push("/login");
         return;
       }
       const payload = await response.json();
       if (!response.ok) throw new Error(payload.error || "Не удалось создать случай");
+      setPickerOpen(false);
       router.push(`/cases/${payload.id}`);
       router.refresh();
     } catch (err) {
@@ -78,7 +87,7 @@ export function CaseList({
               {canEdit ? (
                 <button
                   type="button"
-                  onClick={() => void createCase()}
+                  onClick={() => setPickerOpen(true)}
                   disabled={creating}
                   className="hidden min-h-11 shrink-0 items-center gap-2 rounded-full bg-accent px-4 text-sm font-semibold text-white shadow-lg shadow-accent/20 hover:bg-accent-hover disabled:opacity-60 md:inline-flex"
                 >
@@ -100,7 +109,7 @@ export function CaseList({
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Диагноз, описание, комментарии"
+                placeholder="Диагноз, система, описание, комментарии"
                 autoComplete="off"
                 className="min-h-12 w-full rounded-xl border border-line bg-surface py-2.5 pl-11 pr-12 text-base outline-none ring-accent/30 focus:border-accent focus:ring-4 [&::-webkit-search-cancel-button]:hidden"
               />
@@ -118,7 +127,7 @@ export function CaseList({
             <p className="mt-1.5 text-xs text-muted">
               {searching
                 ? `Найдено ${pluralRu(filtered.length, "случай", "случая", "случаев")}`
-                : "Ищет сразу по диагнозу, описанию и комментариям"}
+                : "Ищет сразу по системе, диагнозу, описанию и комментариям"}
             </p>
           </div>
         </div>
@@ -133,7 +142,7 @@ export function CaseList({
           <EmptyState
             hasCases={initialCases.length > 0}
             canEdit={canEdit}
-            onCreate={() => void createCase()}
+            onCreate={() => setPickerOpen(true)}
           />
         ) : (
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -153,13 +162,23 @@ export function CaseList({
       {canEdit ? (
         <button
           type="button"
-          onClick={() => void createCase()}
+          onClick={() => setPickerOpen(true)}
           disabled={creating}
           className="fixed right-[max(1rem,env(safe-area-inset-right))] bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 inline-flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-xl shadow-accent/30 hover:bg-accent-hover md:hidden"
           aria-label="Добавить случай"
         >
           <PlusIcon className="h-7 w-7" />
         </button>
+      ) : null}
+
+      {pickerOpen ? (
+        <SystemPickerDialog
+          pending={creating}
+          onCancel={() => {
+            if (!creating) setPickerOpen(false);
+          }}
+          onConfirm={(system) => void createCase(system)}
+        />
       ) : null}
     </div>
   );
@@ -179,6 +198,7 @@ function CaseCard({
   const otherCount = item.files.length - imageCount;
   const matched = matchingTextFields(item, query);
   const onlyComments = matched.length === 1 && matched[0] === "comments";
+  const system = organSystemById(item.system);
 
   return (
     <button
@@ -201,6 +221,11 @@ function CaseCard({
         )}
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4">
+        {system ? (
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-accent">
+            {system.label}
+          </p>
+        ) : null}
         <h2 className="line-clamp-2 text-base font-semibold leading-6">
           {item.diagnosis.trim() || "Новый случай"}
         </h2>
@@ -251,7 +276,7 @@ function EmptyState({
       </h2>
       <p className="mt-2 text-sm leading-6 text-muted">
         {hasCases
-          ? "Попробуйте другой запрос — поиск идёт по диагнозу, описанию и комментариям."
+          ? "Попробуйте другой запрос — поиск идёт по системе, диагнозу, описанию и комментариям."
           : canEdit
             ? "Нажмите «+», чтобы создать первый случай и прикрепить снимки рентгена, КТ или МРТ."
             : "Пока нет опубликованных случаев."}
