@@ -2,9 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { MedicalCase } from "@/lib/types";
+import type { MedicalCase, PublicUser } from "@/lib/types";
+import { permissionsFor } from "@/lib/types";
 import { fileUrl, formatDate, pluralRu } from "@/lib/files";
 import { caseMatchesQuery, matchingTextFields } from "@/lib/search";
+import { AuthNav } from "./AuthNav";
 import { CloseIcon, ImageIcon, PlusIcon, SearchIcon } from "./Icons";
 
 const FIELD_LABEL: Record<"diagnosis" | "description" | "comments", string> = {
@@ -13,11 +15,18 @@ const FIELD_LABEL: Record<"diagnosis" | "description" | "comments", string> = {
   comments: "комментариям",
 };
 
-export function CaseList({ initialCases }: { initialCases: MedicalCase[] }) {
+export function CaseList({
+  initialCases,
+  viewer,
+}: {
+  initialCases: MedicalCase[];
+  viewer: PublicUser | null;
+}) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
+  const { canEdit } = permissionsFor(viewer);
 
   const filtered = useMemo(
     () => initialCases.filter((item) => caseMatchesQuery(item, query)),
@@ -44,16 +53,6 @@ export function CaseList({ initialCases }: { initialCases: MedicalCase[] }) {
     }
   }
 
-  async function logout() {
-    await fetch("/api/auth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action: "logout" }),
-    });
-    router.push("/login");
-    router.refresh();
-  }
-
   const searching = query.trim().length > 0;
 
   return (
@@ -68,24 +67,25 @@ export function CaseList({ initialCases }: { initialCases: MedicalCase[] }) {
               <h1 className="truncate text-lg font-semibold sm:text-xl">
                 Архив рентгена, КТ и МРТ
               </h1>
+              {!canEdit ? (
+                <p className="mt-0.5 text-xs text-muted">
+                  Смотреть можно без входа. Добавление и скачивание — после авторизации.
+                </p>
+              ) : null}
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                onClick={() => void logout()}
-                className="min-h-11 rounded-xl px-3 text-sm font-medium text-muted hover:bg-surface hover:text-ink"
-              >
-                Выйти
-              </button>
-              <button
-                type="button"
-                onClick={() => void createCase()}
-                disabled={creating}
-                className="hidden min-h-11 shrink-0 items-center gap-2 rounded-full bg-accent px-4 text-sm font-semibold text-white shadow-lg shadow-accent/20 hover:bg-accent-hover disabled:opacity-60 md:inline-flex"
-              >
-                <PlusIcon className="h-5 w-5" />
-                {creating ? "Создание…" : "Добавить случай"}
-              </button>
+              <AuthNav viewer={viewer} />
+              {canEdit ? (
+                <button
+                  type="button"
+                  onClick={() => void createCase()}
+                  disabled={creating}
+                  className="hidden min-h-11 shrink-0 items-center gap-2 rounded-full bg-accent px-4 text-sm font-semibold text-white shadow-lg shadow-accent/20 hover:bg-accent-hover disabled:opacity-60 md:inline-flex"
+                >
+                  <PlusIcon className="h-5 w-5" />
+                  {creating ? "Создание…" : "Добавить случай"}
+                </button>
+              ) : null}
             </div>
           </div>
 
@@ -130,7 +130,11 @@ export function CaseList({ initialCases }: { initialCases: MedicalCase[] }) {
         ) : null}
 
         {filtered.length === 0 ? (
-          <EmptyState hasCases={initialCases.length > 0} onCreate={() => void createCase()} />
+          <EmptyState
+            hasCases={initialCases.length > 0}
+            canEdit={canEdit}
+            onCreate={() => void createCase()}
+          />
         ) : (
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((item) => (
@@ -146,15 +150,17 @@ export function CaseList({ initialCases }: { initialCases: MedicalCase[] }) {
         )}
       </main>
 
-      <button
-        type="button"
-        onClick={() => void createCase()}
-        disabled={creating}
-        className="fixed right-[max(1rem,env(safe-area-inset-right))] bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 inline-flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-xl shadow-accent/30 hover:bg-accent-hover md:hidden"
-        aria-label="Добавить случай"
-      >
-        <PlusIcon className="h-7 w-7" />
-      </button>
+      {canEdit ? (
+        <button
+          type="button"
+          onClick={() => void createCase()}
+          disabled={creating}
+          className="fixed right-[max(1rem,env(safe-area-inset-right))] bottom-[max(1rem,env(safe-area-inset-bottom))] z-30 inline-flex h-14 w-14 items-center justify-center rounded-full bg-accent text-white shadow-xl shadow-accent/30 hover:bg-accent-hover md:hidden"
+          aria-label="Добавить случай"
+        >
+          <PlusIcon className="h-7 w-7" />
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -226,7 +232,15 @@ function CaseCard({
   );
 }
 
-function EmptyState({ hasCases, onCreate }: { hasCases: boolean; onCreate: () => void }) {
+function EmptyState({
+  hasCases,
+  canEdit,
+  onCreate,
+}: {
+  hasCases: boolean;
+  canEdit: boolean;
+  onCreate: () => void;
+}) {
   return (
     <div className="mx-auto max-w-lg rounded-3xl border border-dashed border-line bg-surface px-6 py-14 text-center">
       <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent-soft text-accent">
@@ -238,9 +252,11 @@ function EmptyState({ hasCases, onCreate }: { hasCases: boolean; onCreate: () =>
       <p className="mt-2 text-sm leading-6 text-muted">
         {hasCases
           ? "Попробуйте другой запрос — поиск идёт по диагнозу, описанию и комментариям."
-          : "Нажмите «+», чтобы создать первый случай и прикрепить снимки рентгена, КТ или МРТ."}
+          : canEdit
+            ? "Нажмите «+», чтобы создать первый случай и прикрепить снимки рентгена, КТ или МРТ."
+            : "Пока нет опубликованных случаев."}
       </p>
-      {hasCases ? null : (
+      {hasCases || !canEdit ? null : (
         <button
           type="button"
           onClick={onCreate}

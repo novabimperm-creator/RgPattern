@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 type AuthFormProps = {
@@ -9,6 +10,7 @@ type AuthFormProps = {
 
 export function AuthForm({ configured }: AuthFormProps) {
   const router = useRouter();
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [website, setWebsite] = useState("");
@@ -30,6 +32,7 @@ export function AuthForm({ configured }: AuthFormProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: configured ? "login" : "setup",
+          username,
           password,
           website,
         }),
@@ -50,15 +53,26 @@ export function AuthForm({ configured }: AuthFormProps) {
     <main className="mx-auto flex min-h-dvh w-full max-w-md flex-col justify-center px-4 py-10">
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">RgPattern</p>
       <h1 className="mt-2 text-2xl font-semibold">
-        {configured ? "Вход в архив" : "Задайте пароль архива"}
+        {configured ? "Вход" : "Создание суперадмина"}
       </h1>
       <p className="mt-2 text-sm leading-6 text-muted">
         {configured
-          ? "Доступ нужен, чтобы боты и посторонние не добавляли случаи и не видели снимки."
-          : "Придумайте пароль — без него нельзя ни смотреть архив, ни создавать случаи. Не короче 8 символов."}
+          ? "Смотреть снимки можно без входа. Добавлять, изменять и скачивать — только после авторизации."
+          : "Первый пользователь станет суперадмином: сможет удалять случаи и регистрировать коллег."}
       </p>
 
       <form onSubmit={(event) => void onSubmit(event)} className="mt-6 space-y-4 rounded-2xl border border-line bg-surface p-5">
+        <label className="block">
+          <span className="text-sm font-semibold">Логин</span>
+          <input
+            value={username}
+            onChange={(event) => setUsername(event.target.value)}
+            required
+            autoFocus
+            autoComplete="username"
+            className="mt-2 w-full rounded-xl border border-line bg-bg px-3 py-3 outline-none ring-accent/30 focus:border-accent focus:ring-4"
+          />
+        </label>
         <label className="block">
           <span className="text-sm font-semibold">Пароль</span>
           <input
@@ -67,7 +81,6 @@ export function AuthForm({ configured }: AuthFormProps) {
             onChange={(event) => setPassword(event.target.value)}
             minLength={8}
             required
-            autoFocus
             autoComplete={configured ? "current-password" : "new-password"}
             className="mt-2 w-full rounded-xl border border-line bg-bg px-3 py-3 outline-none ring-accent/30 focus:border-accent focus:ring-4"
           />
@@ -101,9 +114,12 @@ export function AuthForm({ configured }: AuthFormProps) {
           disabled={pending}
           className="min-h-12 w-full rounded-xl bg-accent text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-60"
         >
-          {pending ? "Проверка…" : configured ? "Войти" : "Сохранить пароль"}
+          {pending ? "Проверка…" : configured ? "Войти" : "Создать суперадмина"}
         </button>
       </form>
+      <Link href="/" className="mt-5 text-center text-sm text-muted hover:text-ink">
+        К архиву без входа
+      </Link>
     </main>
   );
 }

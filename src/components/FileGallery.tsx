@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import type { CaseFile } from "@/lib/types";
 import { fileUrl, formatBytes } from "@/lib/files";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -10,10 +11,18 @@ import { Lightbox } from "./Lightbox";
 type FileGalleryProps = {
   caseId: string;
   files: CaseFile[];
+  canEdit: boolean;
+  canDelete: boolean;
   onChanged: (files: CaseFile[]) => void;
 };
 
-export function FileGallery({ caseId, files, onChanged }: FileGalleryProps) {
+export function FileGallery({
+  caseId,
+  files,
+  canEdit,
+  canDelete,
+  onChanged,
+}: FileGalleryProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -25,6 +34,7 @@ export function FileGallery({ caseId, files, onChanged }: FileGalleryProps) {
   const others = files.filter((file) => !file.isImage);
 
   async function uploadFiles(list: FileList | File[]) {
+    if (!canEdit) return;
     const selected = Array.from(list).filter((file) => file.size > 0);
     if (selected.length === 0) return;
     setUploading(true);
@@ -50,7 +60,7 @@ export function FileGallery({ caseId, files, onChanged }: FileGalleryProps) {
   }
 
   async function confirmDelete() {
-    if (!pendingDelete) return;
+    if (!pendingDelete || !canDelete) return;
     const file = pendingDelete;
     setPendingDelete(null);
     const response = await fetch(`/api/files/${file.id}`, { method: "DELETE" });
@@ -65,6 +75,7 @@ export function FileGallery({ caseId, files, onChanged }: FileGalleryProps) {
   function onDrop(event: React.DragEvent<HTMLElement>) {
     event.preventDefault();
     setDragging(false);
+    if (!canEdit) return;
     if (event.dataTransfer.files.length > 0) {
       void uploadFiles(event.dataTransfer.files);
     }
@@ -76,50 +87,64 @@ export function FileGallery({ caseId, files, onChanged }: FileGalleryProps) {
         <div>
           <h2 className="text-lg font-semibold text-ink">Снимки и файлы</h2>
           <p className="mt-1 text-sm text-muted">
-            Изображения открываются на сайте, остальные форматы можно скачать.
+            {canEdit
+              ? "Изображения открываются на сайте, остальные форматы можно скачать."
+              : "Изображения можно смотреть на сайте. Чтобы скачать файлы, войдите."}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={uploading}
-          className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-60"
-        >
-          <PlusIcon className="h-4 w-4" />
-          Добавить
-        </button>
+        {canEdit ? (
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+            className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-xl bg-accent px-3 py-2 text-sm font-semibold text-white hover:bg-accent-hover disabled:opacity-60"
+          >
+            <PlusIcon className="h-4 w-4" />
+            Добавить
+          </button>
+        ) : null}
       </div>
 
-      <input
-        id="case-files"
-        ref={inputRef}
-        type="file"
-        multiple
-        className="sr-only"
-        onChange={(event) => {
-          if (event.target.files) void uploadFiles(event.target.files);
-        }}
-      />
-
-      <label
-        htmlFor="case-files"
-        onDragOver={(event) => {
-          event.preventDefault();
-          setDragging(true);
-        }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={onDrop}
-        className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed px-4 py-8 text-center transition ${
-          dragging ? "border-accent bg-accent-soft" : "border-line bg-surface hover:border-accent/50"
-        }`}
-      >
-        <p className="text-sm font-medium text-ink">
-          {uploading ? "Загрузка…" : "Перетащите файлы сюда"}
+      {canEdit ? (
+        <>
+          <input
+            id="case-files"
+            ref={inputRef}
+            type="file"
+            multiple
+            className="sr-only"
+            onChange={(event) => {
+              if (event.target.files) void uploadFiles(event.target.files);
+            }}
+          />
+          <label
+            htmlFor="case-files"
+            onDragOver={(event) => {
+              event.preventDefault();
+              setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={onDrop}
+            className={`flex cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed px-4 py-8 text-center transition ${
+              dragging ? "border-accent bg-accent-soft" : "border-line bg-surface hover:border-accent/50"
+            }`}
+          >
+            <p className="text-sm font-medium text-ink">
+              {uploading ? "Загрузка…" : "Перетащите файлы сюда"}
+            </p>
+            <p className="mt-1 max-w-sm text-xs leading-5 text-muted">
+              JPEG, PNG, WebP, DICOM, PDF и другие форматы. На телефоне можно выбрать фото из галереи.
+            </p>
+          </label>
+        </>
+      ) : (
+        <p className="rounded-2xl border border-line bg-surface px-4 py-3 text-sm text-muted">
+          <Link href="/login" className="font-medium text-accent hover:text-accent-hover">
+            Войдите
+          </Link>
+          , чтобы добавлять файлы и скачивать материалы.
         </p>
-        <p className="mt-1 max-w-sm text-xs leading-5 text-muted">
-          JPEG, PNG, WebP, DICOM, PDF и другие форматы. На телефоне можно выбрать фото из галереи.
-        </p>
-      </label>
+      )}
 
       {error ? (
         <p className="rounded-xl bg-danger-soft px-3 py-2 text-sm text-danger">{error}</p>
@@ -147,36 +172,46 @@ export function FileGallery({ caseId, files, onChanged }: FileGalleryProps) {
               </button>
               <figcaption className="flex items-center justify-between gap-2 bg-film/90 px-2 py-2 text-xs text-white">
                 <span className="min-w-0 truncate">{file.originalName}</span>
-                <span className="flex shrink-0 items-center gap-1">
-                  <a
-                    href={fileUrl(file.id, true)}
-                    className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg hover:bg-white/10"
-                    aria-label={`Скачать ${file.originalName}`}
-                  >
-                    <DownloadIcon className="h-4 w-4" />
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => setPendingDelete(file)}
-                    className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg hover:bg-white/10"
-                    aria-label={`Удалить ${file.originalName}`}
-                  >
-                    <TrashIcon className="h-4 w-4" />
-                  </button>
-                </span>
+                {canEdit || canDelete ? (
+                  <span className="flex shrink-0 items-center gap-1">
+                    {canEdit ? (
+                      <a
+                        href={fileUrl(file.id, true)}
+                        className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg hover:bg-white/10"
+                        aria-label={`Скачать ${file.originalName}`}
+                      >
+                        <DownloadIcon className="h-4 w-4" />
+                      </a>
+                    ) : null}
+                    {canDelete ? (
+                      <button
+                        type="button"
+                        onClick={() => setPendingDelete(file)}
+                        className="inline-flex min-h-9 min-w-9 items-center justify-center rounded-lg hover:bg-white/10"
+                        aria-label={`Удалить ${file.originalName}`}
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
+                    ) : null}
+                  </span>
+                ) : null}
               </figcaption>
             </figure>
           ))}
         </div>
       ) : (
         <div className="rounded-2xl border border-line bg-surface px-4 py-8 text-center text-sm text-muted">
-          Снимков пока нет — добавьте изображения, чтобы смотреть их здесь.
+          {canEdit
+            ? "Снимков пока нет — добавьте изображения, чтобы смотреть их здесь."
+            : "Снимков пока нет."}
         </div>
       )}
 
       {others.length > 0 ? (
         <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-ink">Файлы для скачивания</h3>
+          <h3 className="text-sm font-semibold text-ink">
+            {canEdit ? "Файлы для скачивания" : "Другие файлы"}
+          </h3>
           <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
             {others.map((file) => (
               <li key={file.id} className="flex items-center gap-3 px-3 py-3">
@@ -185,21 +220,32 @@ export function FileGallery({ caseId, files, onChanged }: FileGalleryProps) {
                   <p className="truncate text-sm font-medium text-ink">{file.originalName}</p>
                   <p className="text-xs text-muted">{formatBytes(file.size)}</p>
                 </div>
-                <a
-                  href={fileUrl(file.id, true)}
-                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl hover:bg-bg"
-                  aria-label={`Скачать ${file.originalName}`}
-                >
-                  <DownloadIcon className="h-5 w-5" />
-                </a>
-                <button
-                  type="button"
-                  onClick={() => setPendingDelete(file)}
-                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-danger hover:bg-danger-soft"
-                  aria-label={`Удалить ${file.originalName}`}
-                >
-                  <TrashIcon className="h-5 w-5" />
-                </button>
+                {canEdit ? (
+                  <a
+                    href={fileUrl(file.id, true)}
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl hover:bg-bg"
+                    aria-label={`Скачать ${file.originalName}`}
+                  >
+                    <DownloadIcon className="h-5 w-5" />
+                  </a>
+                ) : (
+                  <Link
+                    href="/login"
+                    className="shrink-0 text-xs font-medium text-accent hover:text-accent-hover"
+                  >
+                    Войти, чтобы скачать
+                  </Link>
+                )}
+                {canDelete ? (
+                  <button
+                    type="button"
+                    onClick={() => setPendingDelete(file)}
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-danger hover:bg-danger-soft"
+                    aria-label={`Удалить ${file.originalName}`}
+                  >
+                    <TrashIcon className="h-5 w-5" />
+                  </button>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -210,6 +256,7 @@ export function FileGallery({ caseId, files, onChanged }: FileGalleryProps) {
         <Lightbox
           files={images}
           index={lightboxIndex}
+          canDownload={canEdit}
           onClose={() => setLightboxIndex(null)}
           onIndexChange={setLightboxIndex}
         />

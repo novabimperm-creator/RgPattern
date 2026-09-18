@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireApiSession } from "@/lib/auth";
+import { isDenied, requireApiRole } from "@/lib/auth";
 import { addFiles, getCase } from "@/lib/store";
 import { MAX_FILE_SIZE } from "@/lib/files";
 import { allowRequest, clientIp } from "@/lib/rate-limit";
@@ -10,8 +10,8 @@ export const runtime = "nodejs";
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function POST(request: Request, context: RouteContext) {
-  const denied = await requireApiSession(request);
-  if (denied) return denied;
+  const auth = await requireApiRole(request, "user");
+  if (isDenied(auth)) return auth;
   if (!allowRequest(`upload:${clientIp(request)}`, 30, 15 * 60 * 1000)) {
     return NextResponse.json(
       { error: "Слишком много загрузок. Подождите немного." },
