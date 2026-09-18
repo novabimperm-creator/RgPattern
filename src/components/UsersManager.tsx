@@ -105,8 +105,8 @@ export function UsersManager({ initialUsers }: { initialUsers: PublicUser[] }) {
         <section className="rounded-2xl border border-line bg-surface p-4">
           <h2 className="text-base font-semibold">Резервная копия</h2>
           <p className="mt-1 text-sm leading-6 text-muted">
-            Скачайте случаи, снимки и учётные записи одним файлом. Делайте копию после больших загрузок —
-            git push на Railway без Volume стирает архив.
+            Скачайте случаи, снимки, суперадмина и пользователей одним файлом. Делайте копию после
+            больших загрузок и после регистрации коллег: git push на Railway без Volume стирает и архив, и логины.
           </p>
           <a
             href="/api/backup"

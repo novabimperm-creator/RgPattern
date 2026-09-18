@@ -8,7 +8,7 @@ DATA_DIR="${DATA_DIR:-/app/data}"
 export DATA_DIR
 
 if { [ -n "${RAILWAY_ENVIRONMENT:-}" ] || [ -n "${RAILWAY_PROJECT_ID:-}" ]; } && [ -z "${RAILWAY_VOLUME_MOUNT_PATH:-}" ]; then
-  echo "WARNING: Railway Volume is not attached. Cases, images and users will be deleted on the next deploy. Add a Volume mounted at /app/data." >&2
+  echo "WARNING: Railway Volume is not attached. Cases, images, superadmin and users will be deleted on the next deploy. Add a Volume mounted at /app/data." >&2
 fi
 
 mkdir -p "$DATA_DIR/uploads"

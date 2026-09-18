@@ -29,7 +29,12 @@ async function readDb(): Promise<Database> {
     if (isFsNotFound(error)) return { cases: [] };
     throw error;
   }
-  const parsed = JSON.parse(raw) as Database;
+  let parsed: Database;
+  try {
+    parsed = JSON.parse(raw) as Database;
+  } catch {
+    throw new Error("Файл архива повреждён. Случаи не перезаписаны.");
+  }
   if (!parsed || !Array.isArray(parsed.cases)) {
     throw new Error("Файл архива повреждён. Случаи не перезаписаны.");
   }
