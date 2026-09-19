@@ -68,7 +68,10 @@ export function ResetPasswordDialog({
           <input
             type="password"
             value={password}
-            onChange={(event) => setPassword(event.target.value)}
+            onChange={(event) => {
+              setLocalError("");
+              setPassword(event.target.value);
+            }}
             minLength={8}
             required
             autoFocus
@@ -81,7 +84,10 @@ export function ResetPasswordDialog({
           <input
             type="password"
             value={confirm}
-            onChange={(event) => setConfirm(event.target.value)}
+            onChange={(event) => {
+              setLocalError("");
+              setConfirm(event.target.value);
+            }}
             minLength={8}
             required
             autoComplete="new-password"
