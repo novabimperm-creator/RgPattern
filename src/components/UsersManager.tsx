@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import Link from "next/link";
 import type { PublicUser, Role } from "@/lib/types";
+import { ResetPasswordDialog } from "./ResetPasswordDialog";
 
 export function UsersManager({ initialUsers }: { initialUsers: PublicUser[] }) {
   const [users, setUsers] = useState(initialUsers);
@@ -11,6 +12,10 @@ export function UsersManager({ initialUsers }: { initialUsers: PublicUser[] }) {
   const [role, setRole] = useState<Role>("user");
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
+  const [resetUser, setResetUser] = useState<PublicUser | null>(null);
+  const [resetError, setResetError] = useState("");
+  const [resetPending, setResetPending] = useState(false);
+  const [notice, setNotice] = useState("");
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -36,6 +41,33 @@ export function UsersManager({ initialUsers }: { initialUsers: PublicUser[] }) {
     }
   }
 
+  function closeReset() {
+    if (resetPending) return;
+    setResetUser(null);
+    setResetError("");
+  }
+
+  async function resetPassword(nextPassword: string) {
+    if (!resetUser || resetPending) return;
+    setResetError("");
+    setResetPending(true);
+    try {
+      const response = await fetch("/api/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: resetUser.id, password: nextPassword }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "Не удалось сбросить пароль");
+      setNotice(`Пароль для ${resetUser.username} обновлён`);
+      setResetUser(null);
+    } catch (err) {
+      setResetError(err instanceof Error ? err.message : "Не удалось сбросить пароль");
+    } finally {
+      setResetPending(false);
+    }
+  }
+
   return (
     <div className="min-h-dvh">
       <header className="border-b border-line/80 bg-bg/85">
@@ -49,10 +81,12 @@ export function UsersManager({ initialUsers }: { initialUsers: PublicUser[] }) {
         <div>
           <h1 className="text-2xl font-semibold">Пользователи</h1>
           <p className="mt-1 text-sm text-muted">
-            Новых пользователей регистрирует только суперадмин. Обычный пользователь может добавлять и
-            изменять случаи и скачивать файлы, но не удалять их.
+            Новых пользователей регистрирует только суперадмин. Если коллега потерял пароль, задайте
+            ему новый здесь. Обычный пользователь может добавлять и изменять случаи и скачивать
+            файлы, но не удалять их.
           </p>
         </div>
+        {notice ? <p className="rounded-xl bg-accent-soft px-3 py-2 text-sm text-ink">{notice}</p> : null}
 
         <form
           onSubmit={(event) => void onSubmit(event)}
@@ -125,10 +159,30 @@ export function UsersManager({ initialUsers }: { initialUsers: PublicUser[] }) {
                   {user.role === "superadmin" ? "суперадмин" : "пользователь"}
                 </p>
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setNotice("");
+                  setResetError("");
+                  setResetUser(user);
+                }}
+                className="min-h-11 shrink-0 rounded-xl px-3 text-sm font-medium text-accent hover:bg-accent-soft"
+              >
+                Сбросить пароль
+              </button>
             </li>
           ))}
         </ul>
       </main>
+      {resetUser ? (
+        <ResetPasswordDialog
+          user={resetUser}
+          pending={resetPending}
+          error={resetError}
+          onCancel={closeReset}
+          onConfirm={(nextPassword) => void resetPassword(nextPassword)}
+        />
+      ) : null}
     </div>
   );
 }
