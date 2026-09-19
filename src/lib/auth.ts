@@ -207,6 +207,24 @@ export async function registerUser(
   });
 }
 
+export async function resetUserPassword(
+  userId: string,
+  password: string,
+): Promise<PublicUser | { error: string }> {
+  if (password.trim().length < 8) {
+    return { error: "Пароль должен быть не короче 8 символов" };
+  }
+  return enqueue(async () => {
+    const auth = await readAuth();
+    if (!auth) return { error: "Сначала создайте суперадмина" };
+    const user = auth.users.find((entry) => entry.id === userId);
+    if (!user) return { error: "Пользователь не найден" };
+    user.passwordHash = hashPassword(password.trim());
+    await writeAuth(auth);
+    return publicUser(user);
+  });
+}
+
 export async function findUserByCredentials(
   username: string,
   password: string,
