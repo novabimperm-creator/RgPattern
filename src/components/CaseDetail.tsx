@@ -230,11 +230,7 @@ export function CaseDetail({ initialCase, viewer }: CaseDetailProps) {
                 {selectedSystem?.label || "Не указана"}
               </p>
             )}
-            {selectedSystem ? (
-              <p className="mt-2 text-sm leading-6 text-muted">
-                {selectedSystem.organs}. {selectedSystem.description}
-              </p>
-            ) : canEdit ? (
+            {canEdit && !selectedSystem ? (
               <p className="mt-2 text-sm text-danger">Обязательное поле — без системы случай не сохранится.</p>
             ) : null}
           </label>

@@ -53,15 +53,13 @@ export function SystemPickerDialog({
                 key={item.id}
                 type="button"
                 onClick={() => setSelected(item.id)}
-                className={`w-full rounded-2xl border px-4 py-3 text-left transition ${
+                className={`w-full rounded-2xl border px-4 py-3 text-left font-semibold text-ink transition ${
                   active
                     ? "border-accent bg-accent-soft"
                     : "border-line bg-bg hover:border-accent/40"
                 }`}
               >
-                <p className="font-semibold text-ink">{item.label}</p>
-                <p className="mt-0.5 text-xs text-muted">{item.organs}</p>
-                <p className="mt-1 text-sm leading-5 text-muted">{item.description}</p>
+                {item.label}
               </button>
             );
           })}
